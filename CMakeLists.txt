@@ -18,9 +18,9 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 # Boost
-include(${CMAKE_SOURCE_DIR}/dependencies/BoostDependency.cmake)
+include(${CMAKE_SOURCE_DIR}/dependencies/Boost.cmake)
 link_boost(DisplayManager)
 
 # spdlog
-include(${CMAKE_SOURCE_DIR}/dependencies/SpdlogDependency.cmake)
+include(${CMAKE_SOURCE_DIR}/dependencies/Spdlog.cmake)
 link_spdlog(DisplayManager)
