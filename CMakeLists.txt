@@ -19,7 +19,8 @@ endif()
 
 # Boost
 include(${CMAKE_SOURCE_DIR}/dependencies/Boost.cmake)
-link_boost(DisplayManager)
+set(BOOST_INCLUDE_LIBRARIES program_options property_tree)
+link_boost(DisplayManager "${BOOST_INCLUDE_LIBRARIES}")
 
 # spdlog
 include(${CMAKE_SOURCE_DIR}/dependencies/Spdlog.cmake)

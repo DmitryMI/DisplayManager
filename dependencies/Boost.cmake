@@ -2,8 +2,9 @@ cmake_minimum_required (VERSION 3.24)
 
 include(FetchContent)
 
-function(link_boost to_target)
-	set(BOOST_INCLUDE_LIBRARIES program_options)
+function(link_boost to_target boost_libs)
+	set(BOOST_INCLUDE_LIBRARIES ${boost_libs})
+	set(Boost_USE_STATIC_LIBS ON)
 	set(BOOST_ENABLE_CMAKE ON)
 	FetchContent_Declare(
 		  Boost
@@ -13,7 +14,10 @@ function(link_boost to_target)
 		  OVERRIDE_FIND_PACKAGE
 		)
 	FetchContent_MakeAvailable(Boost)
-	find_package(Boost 1.86 REQUIRED COMPONENTS program_options)
+	find_package(Boost 1.86 REQUIRED COMPONENTS ${boost_libs})
 
-	target_link_libraries(${to_target} PUBLIC Boost::program_options)
+	foreach(boost_lib IN LISTS boost_libs)
+		message(STATUS "Linking ${to_target} to Boost::${boost_lib}")
+		target_link_libraries(${to_target} PUBLIC Boost::${boost_lib})
+	endforeach()
 endfunction()
