@@ -1,9 +1,10 @@
 ﻿#include <boost/program_options.hpp>
 #include <spdlog/spdlog.h>
 #include <iostream>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <string>
+#include "DisplayManager/IDisplayProvider.h"
+#include "DisplayManager/Factory.h"
+#include <spdlog/spdlog.h>
 
 namespace po = boost::program_options;
 
@@ -16,13 +17,22 @@ po::options_description CreateOptionsDescription()
 		("enable", po::value<std::vector<std::string>>()->multitoken(), "Enable display")
 		("disable", po::value<std::vector<std::string>>()->multitoken(), "Disable display")
 		("enumerate", "Enumerate displays")
+		("log-level", po::value<std::string>()->default_value("info"), "Log level")
 		;
 
 	return desc;
 }
 
+void SetupLogging(std::string logLevel)
+{
+	spdlog::set_level(spdlog::level::from_str(logLevel));
+	spdlog::set_pattern("[%Y-%b-%d %T.%e] [%l] %v");
+}
+
 int main(int argc, char** argv)
 {	
+	auto displayProvider = std::unique_ptr<DisplayManager::IDisplayProvider>(DisplayManager::Factory::GetDisplayProvider());
+
 	po::options_description optionsDesc = CreateOptionsDescription();
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, optionsDesc), vm);
@@ -36,8 +46,18 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
+	SetupLogging(vm["log-level"].as<std::string>());
+	spdlog::info("Log level set to {}", vm["log-level"].as<std::string>());
+
 	if (vm.count("enumerate")) 
 	{
+		auto displays = displayProvider->GetDisplays();
+		for (const auto& display : displays)
+		{
+			spdlog::info("Display: {}, Enabled: {}, Coordinates: ({}, {})", display->GetName(), display->IsEnabled(), std::get<0>(display->GetCoordinates()), std::get<1>(display->GetCoordinates()));
+		
+		}
+
 		return 0;
 	}
 

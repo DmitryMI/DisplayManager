@@ -11,17 +11,7 @@ endif()
 
 project ("DisplayManager")
 
-add_executable (DisplayManager "app/main.cpp")
+add_subdirectory("dependencies/nvapi")
+add_subdirectory("src")
+add_subdirectory("app/DisplayManager")
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET DisplayManager PROPERTY CXX_STANDARD 20)
-endif()
-
-# Boost
-include(${CMAKE_SOURCE_DIR}/dependencies/Boost.cmake)
-set(BOOST_INCLUDE_LIBRARIES program_options property_tree)
-link_boost(DisplayManager "${BOOST_INCLUDE_LIBRARIES}")
-
-# spdlog
-include(${CMAKE_SOURCE_DIR}/dependencies/Spdlog.cmake)
-link_spdlog(DisplayManager)
