@@ -43,7 +43,7 @@ void SetupLogging(const std::string& logLevel)
 
 bool CommandEnumerate(
     DisplayManager::IDisplayProvider&,
-    std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
+    const std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
     const CommandArgs&)
 {
     for (const auto& display : displays)
@@ -69,7 +69,7 @@ bool CommandEnumerate(
 
 bool CommandEnable(
     DisplayManager::IDisplayProvider&,
-    std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
+    const std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
     const CommandArgs& args)
 {
     bool somethingDone = false;
@@ -78,7 +78,7 @@ bool CommandEnable(
     {
         bool displayFound = false;
 
-        for (auto& display : displays)
+        for (const auto& display : displays)
         {
             if (display->GetName() == displayName)
             {
@@ -99,7 +99,7 @@ bool CommandEnable(
 
 bool CommandDisable(
     DisplayManager::IDisplayProvider&,
-    std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
+    const std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
     const CommandArgs& args)
 {
     bool somethingDone = false;
@@ -108,7 +108,7 @@ bool CommandDisable(
     {
         bool displayFound = false;
 
-        for (auto& display : displays)
+        for (const auto& display : displays)
         {
             const auto name = display->GetName();
             if (name == displayName)
@@ -131,7 +131,7 @@ bool CommandDisable(
 }
 
 bool CommandSave(
-    DisplayManager::IDisplayProvider& provider,
+    const DisplayManager::IDisplayProvider& provider,
     std::vector<std::shared_ptr<DisplayManager::IDisplay>>&,
     const CommandArgs& args)
 {
@@ -143,7 +143,7 @@ bool CommandSave(
 
     const auto& config = provider.GetActiveConfiguration();
 
-    std::filesystem::path savePath = std::filesystem::absolute(args[0]);
+    const std::filesystem::path savePath = std::filesystem::absolute(args[0]);
 
     spdlog::info("Saving configuration to {}", savePath.string());
 
@@ -164,7 +164,7 @@ bool CommandLoad(
         return false;
     }
 
-    std::filesystem::path loadPath = std::filesystem::absolute(args[0]);
+    const std::filesystem::path loadPath = std::filesystem::absolute(args[0]);
 
     spdlog::info("Loading configuration from {}", loadPath.string());
 
@@ -175,7 +175,7 @@ bool CommandLoad(
     }
 
     DisplayManager::Serialization::BoostInputArchive archive(loadPath);
-    auto config = provider.DeserializeConfiguration(archive);
+    const auto config = provider.DeserializeConfiguration(archive);
 
     if (!provider.ApplyConfiguration(*config))
     {
@@ -210,7 +210,7 @@ int main(int argc, char** argv)
 
     po::notify(vm);
 
-    if (vm.count("help") || !vm.count("command"))
+    if (vm.contains("help") || !vm.contains("command"))
     {
         std::cout << optionsDesc << "\n";
         return 0;
@@ -222,7 +222,7 @@ int main(int argc, char** argv)
     std::string command = vm["command"].as<std::string>();
 
     CommandArgs args;
-    if (vm.count("args"))
+    if (vm.contains("args"))
         args = vm["args"].as<std::vector<std::string>>();
 
     std::unordered_map<std::string, CommandHandler> commands =
