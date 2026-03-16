@@ -1,16 +1,27 @@
 ﻿#include <boost/program_options.hpp>
 #include <spdlog/spdlog.h>
+
+#include <filesystem>
 #include <iostream>
+#include <memory>
 #include <string>
-#include "DisplayManager/IDisplayProvider.h"
+#include <unordered_map>
+#include <vector>
+
 #include "DisplayManager/Factory.h"
 #include "DisplayManager/IConfiguration.h"
-#include <spdlog/spdlog.h>
+#include "DisplayManager/IDisplayProvider.h"
 
 #include "DisplayManager/Serialization/BoostInputArchive.h"
 #include "DisplayManager/Serialization/BoostOutputArchive.h"
 
 namespace po = boost::program_options;
+
+using CommandArgs = std::vector<std::string>;
+using CommandHandler = std::function<bool(
+    DisplayManager::IDisplayProvider&,
+    std::vector<std::shared_ptr<DisplayManager::IDisplay>>&,
+    const CommandArgs&)>;
 
 po::options_description CreateOptionsDescription()
 {
@@ -18,36 +29,186 @@ po::options_description CreateOptionsDescription()
 
     desc.add_options()
         ("help", "produce help message")
-        ("enable", po::value<std::vector<std::string>>()->multitoken(), "Enable display")
-        ("disable", po::value<std::vector<std::string>>()->multitoken(), "Disable display")
-        ("enumerate", "Enumerate displays")
-        ("save", po::value<std::string>(), "Save current configuration to file")
-        ("load", po::value<std::string>(), "Load configuration from file")
+        ("command", po::value<std::string>(), "Command")
+        ("args", po::value<std::vector<std::string>>(), "Command arguments")
         ("log-level", po::value<std::string>()->default_value("info"), "Log level");
 
     return desc;
 }
 
-void SetupLogging(std::string logLevel)
+void SetupLogging(const std::string& logLevel)
 {
     spdlog::set_level(spdlog::level::from_str(logLevel));
     spdlog::set_pattern("[%Y-%b-%d %T.%e] [%l] %v");
+}
+
+bool CommandEnumerate(
+    DisplayManager::IDisplayProvider&,
+    std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
+    const CommandArgs&)
+{
+    for (const auto& display : displays)
+    {
+        std::string coordinatesStr = "(N/A)";
+        const auto& coordinates = display->GetCoordinates();
+
+        if (coordinates.has_value())
+        {
+            coordinatesStr =
+                "(" + std::to_string(std::get<0>(*coordinates)) +
+                ", " + std::to_string(std::get<1>(*coordinates)) + ")";
+        }
+
+        spdlog::info("Display: {}, Enabled: {}, Coordinates: {}",
+                     display->GetName(),
+                     display->IsEnabled(),
+                     coordinatesStr);
+    }
+
+    return true;
+}
+
+bool CommandEnable(
+    DisplayManager::IDisplayProvider&,
+    std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
+    const CommandArgs& args)
+{
+    bool somethingDone = false;
+
+    for (const auto& displayName : args)
+    {
+        bool displayFound = false;
+
+        for (auto& display : displays)
+        {
+            if (display->GetName() == displayName)
+            {
+                display->SetEnabled(true);
+                spdlog::info("Display {}, Set Enabled: true", display->GetName());
+                displayFound = true;
+                somethingDone = true;
+                break;
+            }
+        }
+
+        if (!displayFound)
+            spdlog::error("Display with name {} was not found", displayName);
+    }
+
+    return somethingDone;
+}
+
+bool CommandDisable(
+    DisplayManager::IDisplayProvider&,
+    std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
+    const CommandArgs& args)
+{
+    bool somethingDone = false;
+
+    for (const auto& displayName : args)
+    {
+        bool displayFound = false;
+
+        for (auto& display : displays)
+        {
+            if (display->GetName() == displayName)
+            {
+                display->SetEnabled(false);
+                spdlog::info("Display {}, Set Enabled: false", display->GetName());
+                displayFound = true;
+                somethingDone = true;
+                break;
+            }
+        }
+
+        if (!displayFound)
+            spdlog::error("Display with name {} was not found", displayName);
+    }
+
+    return somethingDone;
+}
+
+bool CommandSave(
+    DisplayManager::IDisplayProvider& provider,
+    std::vector<std::shared_ptr<DisplayManager::IDisplay>>&,
+    const CommandArgs& args)
+{
+    if (args.empty())
+    {
+        spdlog::error("Save requires a file path");
+        return false;
+    }
+
+    const auto& config = provider.GetActiveConfiguration();
+
+    std::filesystem::path savePath = std::filesystem::absolute(args[0]);
+
+    spdlog::info("Saving configuration to {}", savePath.string());
+
+    DisplayManager::Serialization::BoostOutputArchive archive(savePath);
+    config.Serialize(archive);
+
+    return true;
+}
+
+bool CommandLoad(
+    DisplayManager::IDisplayProvider& provider,
+    std::vector<std::shared_ptr<DisplayManager::IDisplay>>&,
+    const CommandArgs& args)
+{
+    if (args.empty())
+    {
+        spdlog::error("Load requires a file path");
+        return false;
+    }
+
+    std::filesystem::path loadPath = std::filesystem::absolute(args[0]);
+
+    spdlog::info("Loading configuration from {}", loadPath.string());
+
+    if (!std::filesystem::exists(loadPath))
+    {
+        spdlog::error("Configuration file does not exist");
+        return false;
+    }
+
+    DisplayManager::Serialization::BoostInputArchive archive(loadPath);
+    auto config = provider.DeserializeConfiguration(archive);
+
+    if (!provider.ApplyConfiguration(*config))
+    {
+        spdlog::error("Failed to apply configuration");
+        return false;
+    }
+
+    return true;
 }
 
 int main(int argc, char** argv)
 {
     auto displayProvider = std::unique_ptr<DisplayManager::IDisplayProvider>(
         DisplayManager::Factory::GetDisplayProvider());
+
     auto displays = displayProvider->GetDisplays();
 
-    po::options_description optionsDesc = CreateOptionsDescription();
+    auto optionsDesc = CreateOptionsDescription();
+
+    po::positional_options_description pos;
+    pos.add("command", 1);
+    pos.add("args", -1);
+
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, optionsDesc), vm);
+
+    po::store(
+        po::command_line_parser(argc, argv)
+            .options(optionsDesc)
+            .positional(pos)
+            .run(),
+        vm);
+
     po::notify(vm);
 
-    bool somethingDone = false;
-
-    if (vm.count("help"))
+    if (vm.count("help") || !vm.count("command"))
     {
         std::cout << optionsDesc << "\n";
         return 0;
@@ -56,116 +217,30 @@ int main(int argc, char** argv)
     SetupLogging(vm["log-level"].as<std::string>());
     spdlog::info("Log level set to {}", vm["log-level"].as<std::string>());
 
-    if (vm.count("enumerate"))
+    std::string command = vm["command"].as<std::string>();
+
+    CommandArgs args;
+    if (vm.count("args"))
+        args = vm["args"].as<std::vector<std::string>>();
+
+    std::unordered_map<std::string, CommandHandler> commands =
     {
-        for (const auto& display : displays)
-        {
-            std::string coordinatesStr = "(N/A)";
-            const auto& coordinates = display->GetCoordinates();
-            if (coordinates.has_value())
-            {
-                coordinatesStr = "(" + std::to_string(std::get<0>(coordinates.value())) + ", " + std::to_string(
-                    std::get<1>(coordinates.value())) + ")";
-            }
-            spdlog::info("Display: {}, Enabled: {}, Coordinates: {}", display->GetName(), display->IsEnabled(),
-                         coordinatesStr);
-        }
+        {"enumerate", CommandEnumerate},
+        {"enable", CommandEnable},
+        {"disable", CommandDisable},
+        {"save", CommandSave},
+        {"load", CommandLoad},
+    };
 
-        return 0;
-    }
+    auto it = commands.find(command);
 
-    if (vm.count("enable"))
+    if (it == commands.end())
     {
-        for (const auto& displayName : vm["enable"].as<std::vector<std::string>>())
-        {
-            bool displayFound = false;
-            for (auto& display : displays)
-            {
-                const auto name = display->GetName();
-                if (name == displayName)
-                {
-                    display->SetEnabled(true);
-                    spdlog::info("Display {}, Set Enabled: true", display->GetName());
-                    displayFound = true;
-                    break;
-                }
-            }
-            if (!displayFound)
-            {
-                spdlog::error("Display with name {} was not found", displayName);
-            }
-        }
-        somethingDone = true;
-    }
-
-    if (vm.count("disable"))
-    {
-        for (const auto& displayName : vm["disable"].as<std::vector<std::string>>())
-        {
-            bool displayFound = false;
-            for (auto& display : displays)
-            {
-                const auto name = display->GetName();
-                if (name == displayName)
-                {
-                    display->SetEnabled(false);
-                    spdlog::info("Display {}, Set Enabled: false", display->GetName());
-                    displayFound = true;
-                    break;
-                }
-            }
-            if (!displayFound)
-            {
-                spdlog::error("Display with name {} was not found", displayName);
-            }
-        }
-        somethingDone = true;
-    }
-
-    if (vm.count("save"))
-    {
-        const auto& config = displayProvider->GetActiveConfiguration();
-        auto savePathArg = vm["save"].as<std::string>();
-        std::filesystem::path savePath = savePathArg;
-        savePath = std::filesystem::absolute(savePath);
-        spdlog::info("Saving configuration to {}", savePath.string());
-        DisplayManager::Serialization::BoostOutputArchive archive(savePath);
-        config.Serialize(archive);
-
-        somethingDone = true;
-    }
-
-    if (vm.count("load"))
-    {
-        auto loadPathArg = vm["load"].as<std::string>();
-        std::filesystem::path loadPath = loadPathArg;
-        loadPath = std::filesystem::absolute(loadPath);
-        spdlog::info("Loading configuration from {}", loadPath.string());
-        if (!std::filesystem::exists(loadPath))
-        {
-            spdlog::error("Configuration file does not exist");
-        }
-        else
-        {
-            DisplayManager::Serialization::BoostInputArchive archive(loadPath);
-            auto config = displayProvider->DeserializeConfiguration(archive);
-            if (bool applied = displayProvider->ApplyConfiguration(*config); !applied)
-            {
-                spdlog::error("Failed to apply configuration");
-            }
-            else
-            {
-                somethingDone = true;
-            }
-        }
-
-    }
-
-    if (!somethingDone)
-    {
-        std::cout << optionsDesc << "\n";
+        spdlog::error("Unknown command: {}", command);
         return 1;
     }
 
-    return 0;
+    bool result = it->second(*displayProvider, displays, args);
+
+    return result ? 0 : 1;
 }
