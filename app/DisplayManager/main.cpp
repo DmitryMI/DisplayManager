@@ -32,6 +32,7 @@ void SetupLogging(std::string logLevel)
 int main(int argc, char** argv)
 {	
 	auto displayProvider = std::unique_ptr<DisplayManager::IDisplayProvider>(DisplayManager::Factory::GetDisplayProvider());
+	auto displays = displayProvider->GetDisplays();
 
 	po::options_description optionsDesc = CreateOptionsDescription();
 	po::variables_map vm;
@@ -51,10 +52,15 @@ int main(int argc, char** argv)
 
 	if (vm.count("enumerate")) 
 	{
-		auto displays = displayProvider->GetDisplays();
 		for (const auto& display : displays)
 		{
-			spdlog::info("Display: {}, Enabled: {}, Coordinates: ({}, {})", display->GetName(), display->IsEnabled(), std::get<0>(display->GetCoordinates()), std::get<1>(display->GetCoordinates()));
+			std::string coordinatesStr = "(N/A)";
+			const auto& coordinates = display->GetCoordinates();
+			if (coordinates.has_value())
+			{
+				coordinatesStr = "(" + std::to_string(std::get<0>(coordinates.value())) + ", " + std::to_string(std::get<1>(coordinates.value())) + ")";
+			}
+			spdlog::info("Display: {}, Enabled: {}, Coordinates: {}", display->GetName(), display->IsEnabled(), coordinatesStr);
 		
 		}
 
@@ -72,13 +78,26 @@ int main(int argc, char** argv)
 	}
 
 	if (vm.count("disable"))
+	{
+		for (const auto& displayName : vm["disable"].as<std::vector<std::string>>())
 		{
-		std::cout << "Disable: ";
-		for (const auto& display : vm["disable"].as<std::vector<std::string>>())
-		{
-			std::cout << display << " ";
+			bool displayFound = false;
+			for (auto& display : displays)
+			{
+				const auto name = display->GetName();
+				if (name == displayName)
+				{
+					display->SetEnabled(false);
+					spdlog::info("Display {}, Set Enabled: false", display->GetName());
+					displayFound = true;
+					break;
+				}
+			}
+			if (!displayFound)
+			{
+				spdlog::error("Display with name {} was not found", displayName);
+			}
 		}
-		std::cout << "\n";
 		somethingDone = true;
 	}
 

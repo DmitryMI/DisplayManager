@@ -18,7 +18,10 @@ namespace DisplayManager::NvApi
 		std::vector<std::shared_ptr<IDisplay>> GetDisplays() override;
 		void Refresh() override;
 
-		static std::string GetDisplayName(NvPhysicalGpuHandle gpuHandle, NvU32 id);
+		static std::string GetDisplayName(NvU32 id);
+		std::optional<std::tuple<int, int>> GetDisplayCoordinates(NvU32 id) const;
+		bool IsDisplayEnabled(NvU32 id) const;
+		void SetDisplayEnabled(NvU32 id, bool enabled);
 
 	private:
 		std::unordered_map<NvU32, std::shared_ptr<Display>> m_Displays;

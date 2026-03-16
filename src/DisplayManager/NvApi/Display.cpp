@@ -24,21 +24,27 @@ namespace DisplayManager::NvApi
 
     std::string Display::GetName() const
     {
-        return DisplayProvider::GetDisplayName(m_GpuHandle, m_DisplayId);
+        return DisplayProvider::GetDisplayName(m_DisplayId);
     }
 
-    bool Display::IsEnabled() const
+    bool Display::IsPrimary() const
     {
         return false;
     }
 
-    void Display::SetEnabled(bool enabled)
+    bool Display::IsEnabled() const
     {
+        return m_DisplayProvider->IsDisplayEnabled(m_DisplayId);
     }
 
-    std::tuple<int, int> Display::GetCoordinates() const
+    void Display::SetEnabled(bool enabled)
     {
-        return std::make_tuple(0, 0);
+        m_DisplayProvider->SetDisplayEnabled(m_DisplayId, enabled);
+    }
+
+    std::optional<std::tuple<int, int>> Display::GetCoordinates() const
+    {
+        return m_DisplayProvider->GetDisplayCoordinates(m_DisplayId);
     }
 
     void Display::SetCoordinates(int x, int y)
