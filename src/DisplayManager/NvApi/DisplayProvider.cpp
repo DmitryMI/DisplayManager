@@ -329,57 +329,60 @@ namespace DisplayManager::NvApi
 		throw std::runtime_error("Failed to find DisplayID (struct) info for display id " + std::to_string(id));
 	}
 
-	void DisplayProvider::SetDisplayEnabled(NvU32 id, bool enabled)
+	void DisplayProvider::SetDisplayEnabled(NvU32 id, bool enabledSet)
 	{
 		bool isCurrentlyEnabled = false;
-		size_t targetIndex = 0;
 
-		// Check if the ID is currently in the active path list
-		for (size_t i = 0; i < m_DisplayConfigs.size(); ++i) {
-			for (NvU32 j = 0; j < m_DisplayConfigs[i].TargetInfos.size(); ++j) {
-				if (m_DisplayConfigs[i].TargetInfos[j].displayId == id) {
-					isCurrentlyEnabled = true;
-					targetIndex = i;
-					break;
-				}
-			}
+		const auto pathIter = FindPathByDisplayId(id);
+		bool currentlyEnabled = pathIter != m_DisplayConfigs.end();
+		if (enabledSet == currentlyEnabled)
+		{
+			return;
 		}
 
-		if (enabled) {
-			if (isCurrentlyEnabled) return; // Already on, nothing to do
+		if (enabledSet)
+		{
+			DisplayConfigPathInfo pathInfoNew;
+			pathInfoNew.SourceId = 0;
+			NV_DISPLAYCONFIG_PATH_TARGET_INFO targetInfoNew{0};
+			targetInfoNew.displayId = id;
+			pathInfoNew.TargetInfos = {targetInfoNew};
 
-			// Logic for Enabling: This typically requires NvAPI_DISP_GetDisplayConfig
-			// with the NV_DISPLAYCONFIG_FLAGS_INCLUDE_ALL_POSSIBLE_PATHS flag
-			// to find the "Hidden" path for the ID and add it back.
-			// For brevity, we'll focus on the specific Disable/Primary requirement.
+			NV_DISPLAYCONFIG_SOURCE_MODE_INFO sourceModeInfoNew {0};
+			sourceModeInfoNew.resolution = {3840, 2160, NV_FORMAT_A8R8G8B8};
+			pathInfoNew.SourceModeInfos = {sourceModeInfoNew};
+
+			m_DisplayConfigs.push_back(pathInfoNew);
 		}
-		else {
-			if (!isCurrentlyEnabled) return; // Already off
-
-			// --- PRIMARY DISPLAY CHECK ---
-			if (m_DisplayConfigs[targetIndex].SourceModeInfos[0].bGDIPrimary)
+		else
+		{
+			if (pathIter->SourceModeInfos[0].bGDIPrimary)
 			{
 				throw std::runtime_error("Safety Fault: Cannot disable the Primary Display.");
 			}
 
-			// Remove the path associated with this ID
-			m_DisplayConfigs.erase(m_DisplayConfigs.begin() + targetIndex);
-
-			std::vector<NV_DISPLAYCONFIG_PATH_INFO> pathInfos;
-			pathInfos.reserve(m_DisplayConfigs.size());
-			for (auto& managedPath: m_DisplayConfigs)
-			{
-				pathInfos.push_back(managedPath.ToUnmanaged());
-			}
-
-			// Apply the new topology
-			const auto status = NvAPI_DISP_SetDisplayConfig((NvU32)pathInfos.size(), pathInfos.data(), 0);
-
-			if (status != NVAPI_OK)
-			{
-				throw std::runtime_error("NvAPI_DISP_SetDisplayConfig failed with code: " + std::to_string(status));
-			}
+			m_DisplayConfigs.erase(pathIter);
 		}
+
+		std::vector<NV_DISPLAYCONFIG_PATH_INFO> pathInfos;
+		pathInfos.reserve(m_DisplayConfigs.size());
+		for (auto& managedPath: m_DisplayConfigs)
+		{
+			const NV_DISPLAYCONFIG_PATH_INFO unmanagedPathInfo = managedPath.ToUnmanaged();
+			pathInfos.push_back(unmanagedPathInfo);
+		}
+
+		// Apply the new topology
+		const auto status = NvAPI_DISP_SetDisplayConfig(static_cast<NvU32>(pathInfos.size()), pathInfos.data(), 0);
+
+		if (status != NVAPI_OK)
+		{
+			throw std::runtime_error("NvAPI_DISP_SetDisplayConfig failed with code: " + std::to_string(status));
+		}
+
+		m_DisplayConfigs = GetDisplayConfig();
+
+		return;
 	}
 
 	// https://github.com/NVIDIA/nvapi/blob/main/Sample_Code/DisplayConfiguration/DisplayConfiguration.cpp

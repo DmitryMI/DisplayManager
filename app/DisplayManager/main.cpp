@@ -68,12 +68,25 @@ int main(int argc, char** argv)
 	}
 
 	if (vm.count("enable")) {
-		std::cout << "Enable: ";
-		for (const auto& display : vm["enable"].as<std::vector<std::string>>())
+		for (const auto& displayName : vm["enable"].as<std::vector<std::string>>())
 		{
-			std::cout << display << " ";
+			bool displayFound = false;
+			for (auto& display : displays)
+			{
+				const auto name = display->GetName();
+				if (name == displayName)
+				{
+					display->SetEnabled(true);
+					spdlog::info("Display {}, Set Enabled: true", display->GetName());
+					displayFound = true;
+					break;
+				}
+			}
+			if (!displayFound)
+			{
+				spdlog::error("Display with name {} was not found", displayName);
+			}
 		}
-		std::cout << "\n";
 		somethingDone = true;
 	}
 

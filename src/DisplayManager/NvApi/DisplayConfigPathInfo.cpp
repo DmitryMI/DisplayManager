@@ -9,6 +9,10 @@ namespace DisplayManager::NvApi
         pathInfo.sourceId = SourceId;
         pathInfo.targetInfoCount = TargetInfos.size();
         pathInfo.targetInfo = TargetInfos.data();
+        if (TargetInfos.size() == TargetInfosDetails.size())
+        {
+            pathInfo.targetInfo->details = TargetInfosDetails.data();
+        }
         pathInfo.sourceModeInfo = SourceModeInfos.data();
         pathInfo.IsNonNVIDIAAdapter = IsNonNVIDIAAdapter;
         // pathInfo.pOSAdapterID
