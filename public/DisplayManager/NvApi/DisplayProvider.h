@@ -5,6 +5,8 @@
 #include "DisplayManager/NvApi/DisplayConfigPathInfo.h"
 #include <unordered_map>
 
+#include "Configuration.h"
+
 namespace DisplayManager::NvApi
 {
 	class Display;
@@ -26,11 +28,11 @@ namespace DisplayManager::NvApi
 	private:
 		std::unordered_map<NvU32, std::shared_ptr<Display>> m_Displays;
 		std::vector<NV_GPU_DISPLAYIDS> m_DisplayIds;
-		std::vector<DisplayConfigPathInfo> m_DisplayConfigs;
+		Configuration m_Configuration;
 
 		auto FindPathByDisplayId(NvU32 id) const
 		{
-			return std::ranges::find_if(m_DisplayConfigs,
+			return std::ranges::find_if(m_Configuration.GetPathInfos(),
 			                            [id](const DisplayConfigPathInfo& pathInfoEntry)
 			                            {
 				                            for (const auto & TargetInfo : pathInfoEntry.TargetInfos)
@@ -46,5 +48,11 @@ namespace DisplayManager::NvApi
 		}
 
 		void RefreshInternal();
+
+	public:
+		std::unique_ptr<IConfiguration> DeserializeConfiguration(
+			Serialization::IInputArchive& archive) const override;
+		const IConfiguration& GetActiveConfiguration() const override;
+		bool ApplyConfiguration(const IConfiguration& configuration) override;
 	};
 }

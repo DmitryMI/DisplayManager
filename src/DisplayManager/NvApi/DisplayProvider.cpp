@@ -54,7 +54,7 @@ namespace
 		return displayIds;
 	}
 
-	std::vector<DisplayManager::NvApi::DisplayConfigPathInfo> GetDisplayConfig()
+	std::vector<DisplayManager::NvApi::DisplayConfigPathInfo> GetDisplayConfiguration()
 	{
 		NvU32 pathInfoCount = 0;
 		auto ret = NvAPI_DISP_GetDisplayConfig(&pathInfoCount, nullptr);
@@ -164,36 +164,6 @@ namespace
 		return nullptr;
 	}
 
-	std::string GetHumanReadableMonitorName(NvDisplayHandle hDisplay)
-	{
-		NvAPI_Status status;
-		NvAPI_ShortString osDisplayName; // This will hold e.g., "\\.\DISPLAY1"
-
-		// 1. Get the Windows Display Name from the NVAPI Handle
-		status = NvAPI_GetAssociatedNvidiaDisplayName(hDisplay, osDisplayName);
-		if (status != NVAPI_OK)
-		{
-			throw std::runtime_error("NvAPI_GetAssociatedNvidiaDisplayName() failed: " + std::to_string(status));
-		}
-
-		// 2. Prepare the Windows DISPLAY_DEVICE structure
-		DISPLAY_DEVICEA monitorDevice;
-		ZeroMemory(&monitorDevice, sizeof(monitorDevice));
-		monitorDevice.cb = sizeof(monitorDevice);
-
-		// 3. Query the Windows API for the monitor attached to this display
-		// Passing osDisplayName targets the specific GPU output.
-		// Index '0' requests the first monitor attached to that output.
-		if (EnumDisplayDevicesA(osDisplayName, 0, &monitorDevice, 0))
-		{
-			return osDisplayName;
-		}
-		else
-		{
-			throw std::runtime_error("Failed to get monitor details via Windows API");
-		}
-	}
-
 	NV_EDID GetDisplayEdid(NvU32 displayId)
 	{
 		// 1. Get the Physical GPU handle for this Display ID
@@ -259,6 +229,22 @@ namespace
 		throw std::runtime_error("Model Name Not Found in EDID");
 	}
 
+	NV_RESOLUTION GetNativeResolutionFromEdid(const NV_EDID& edid)
+	{
+		NV_RESOLUTION resolution = { 0, 0, 32 };
+
+		// --- 1. Parse Resolution (Detailed Timing Descriptor at Offset 54) ---
+		const unsigned char* dtd = &edid.EDID_Data[54];
+
+		// Check if DTD is valid (Pixel Clock check)
+		if (dtd[0] != 0 || dtd[1] != 0)
+		{
+			resolution.width = ((dtd[4] & 0xF0) << 4) | dtd[2];
+			resolution.height = ((dtd[7] & 0xF0) << 4) | dtd[5];
+		}
+		return resolution;
+	}
+
 }
 
 namespace DisplayManager::NvApi
@@ -271,7 +257,7 @@ namespace DisplayManager::NvApi
 			throw std::runtime_error("NVAPI is not initialized");
 		}
 
-		const auto configs = GetDisplayConfig();
+		const auto configs = GetDisplayConfiguration();
 
 		RefreshInternal();
 	}
@@ -301,7 +287,7 @@ namespace DisplayManager::NvApi
 
 	std::optional<std::tuple<int, int>> DisplayProvider::GetDisplayCoordinates(NvU32 id) const
 	{
-		for (const auto& pathInfo : m_DisplayConfigs)
+		for (const auto& pathInfo : m_Configuration.GetPathInfos())
 		{
 			for (const auto& targetInfo: pathInfo.TargetInfos)
 			{
@@ -334,7 +320,7 @@ namespace DisplayManager::NvApi
 		bool isCurrentlyEnabled = false;
 
 		const auto pathIter = FindPathByDisplayId(id);
-		bool currentlyEnabled = pathIter != m_DisplayConfigs.end();
+		bool currentlyEnabled = pathIter != m_Configuration.GetPathInfos().end();
 		if (enabledSet == currentlyEnabled)
 		{
 			return;
@@ -349,10 +335,12 @@ namespace DisplayManager::NvApi
 			pathInfoNew.TargetInfos = {targetInfoNew};
 
 			NV_DISPLAYCONFIG_SOURCE_MODE_INFO sourceModeInfoNew {0};
-			sourceModeInfoNew.resolution = {3840, 2160, NV_FORMAT_A8R8G8B8};
+			// sourceModeInfoNew.resolution = {3840, 2160, 32};
+			const auto edid = GetDisplayEdid(id);
+			sourceModeInfoNew.resolution = GetNativeResolutionFromEdid(edid);
 			pathInfoNew.SourceModeInfos = {sourceModeInfoNew};
 
-			m_DisplayConfigs.push_back(pathInfoNew);
+			m_Configuration.GetPathInfos().push_back(pathInfoNew);
 		}
 		else
 		{
@@ -361,12 +349,12 @@ namespace DisplayManager::NvApi
 				throw std::runtime_error("Safety Fault: Cannot disable the Primary Display.");
 			}
 
-			m_DisplayConfigs.erase(pathIter);
+			m_Configuration.GetPathInfos().erase(pathIter);
 		}
 
 		std::vector<NV_DISPLAYCONFIG_PATH_INFO> pathInfos;
-		pathInfos.reserve(m_DisplayConfigs.size());
-		for (auto& managedPath: m_DisplayConfigs)
+		pathInfos.reserve(m_Configuration.GetPathInfos().size());
+		for (auto& managedPath: m_Configuration.GetPathInfos())
 		{
 			const NV_DISPLAYCONFIG_PATH_INFO unmanagedPathInfo = managedPath.ToUnmanaged();
 			pathInfos.push_back(unmanagedPathInfo);
@@ -380,9 +368,7 @@ namespace DisplayManager::NvApi
 			throw std::runtime_error("NvAPI_DISP_SetDisplayConfig failed with code: " + std::to_string(status));
 		}
 
-		m_DisplayConfigs = GetDisplayConfig();
-
-		return;
+		m_Configuration.GetPathInfos() = GetDisplayConfiguration();
 	}
 
 	// https://github.com/NVIDIA/nvapi/blob/main/Sample_Code/DisplayConfiguration/DisplayConfiguration.cpp
@@ -418,6 +404,44 @@ namespace DisplayManager::NvApi
 			m_Displays.erase(iter->displayId);
 		}
 
-		m_DisplayConfigs = GetDisplayConfig();
+		m_Configuration.GetPathInfos() = GetDisplayConfiguration();
+	}
+
+	std::unique_ptr<IConfiguration> DisplayProvider::DeserializeConfiguration(
+		Serialization::IInputArchive& archive) const
+	{
+		auto config = std::make_unique<Configuration>();
+		config->Deserialize(archive);
+		return config;
+	}
+
+	const IConfiguration& DisplayProvider::GetActiveConfiguration() const
+	{
+		return m_Configuration;
+	}
+
+	bool DisplayProvider::ApplyConfiguration(const IConfiguration& configuration)
+	{
+		const auto* configNew = dynamic_cast<const Configuration*>(&configuration);
+		if (!configNew)
+		{
+			throw std::runtime_error("Configuration type mismatch");
+		}
+
+		m_Configuration.GetPathInfos() = configNew->GetPathInfos();
+
+		std::vector<NV_DISPLAYCONFIG_PATH_INFO> pathInfos;
+		pathInfos.reserve(m_Configuration.GetPathInfos().size());
+		for (auto& managedPath: m_Configuration.GetPathInfos())
+		{
+			const NV_DISPLAYCONFIG_PATH_INFO unmanagedPathInfo = managedPath.ToUnmanaged();
+			pathInfos.push_back(unmanagedPathInfo);
+		}
+
+		// Apply the new topology
+		const auto status = NvAPI_DISP_SetDisplayConfig(static_cast<NvU32>(pathInfos.size()), pathInfos.data(), 0);
+
+		m_Configuration.GetPathInfos() = GetDisplayConfiguration();
+		return status == NVAPI_OK;
 	}
 }

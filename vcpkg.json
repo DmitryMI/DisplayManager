@@ -2,6 +2,7 @@
   "dependencies": [
     "gtest",
     "spdlog",
-    "boost-program-options"
+    "boost-program-options",
+    "boost-serialization"
   ]
 }
