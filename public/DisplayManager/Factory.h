@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include "DisplayManager/IDisplayProvider.h"
 
 namespace DisplayManager
