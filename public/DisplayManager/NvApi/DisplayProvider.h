@@ -15,22 +15,23 @@ namespace DisplayManager::NvApi
 	{
 	public:
 		DisplayProvider();
-		virtual ~DisplayProvider() = default;
+		~DisplayProvider() override = default;
 
 		std::vector<std::shared_ptr<IDisplay>> GetDisplays() override;
 		void Refresh() override;
 
 		static std::string GetDisplayName(NvU32 id);
-		std::optional<std::tuple<int, int>> GetDisplayCoordinates(NvU32 id) const;
-		bool IsDisplayEnabled(NvU32 id) const;
+		[[nodiscard]] std::optional<std::tuple<int, int>> GetDisplayCoordinates(NvU32 id) const;
+		[[nodiscard]] bool IsDisplayEnabled(NvU32 id) const;
 		void SetDisplayEnabled(NvU32 id, bool enabledSet);
+		[[nodiscard]] bool IsDisplayPrimary(NvU32 id) const;
 
 	private:
 		std::unordered_map<NvU32, std::shared_ptr<Display>> m_Displays;
 		std::vector<NV_GPU_DISPLAYIDS> m_DisplayIds;
 		Configuration m_Configuration;
 
-		auto FindPathByDisplayId(NvU32 id) const
+		[[nodiscard]] auto FindPathByDisplayId(NvU32 id) const
 		{
 			return std::ranges::find_if(m_Configuration.GetPathInfos(),
 			                            [id](const DisplayConfigPathInfo& pathInfoEntry)
@@ -52,7 +53,7 @@ namespace DisplayManager::NvApi
 	public:
 		std::unique_ptr<IConfiguration> DeserializeConfiguration(
 			Serialization::IInputArchive& archive) const override;
-		const IConfiguration& GetActiveConfiguration() const override;
+		[[nodiscard]] const IConfiguration& GetActiveConfiguration() const override;
 		bool ApplyConfiguration(const IConfiguration& configuration) override;
 	};
 }

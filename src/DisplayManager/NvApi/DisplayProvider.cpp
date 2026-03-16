@@ -287,19 +287,14 @@ namespace DisplayManager::NvApi
 
     std::optional<std::tuple<int, int>> DisplayProvider::GetDisplayCoordinates(NvU32 id) const
     {
-        for (const auto& pathInfo : m_Configuration.GetPathInfos())
+        const auto iter = FindPathByDisplayId(id);
+        if (iter == m_Configuration.GetPathInfos().end())
         {
-            for (const auto& targetInfo : pathInfo.TargetInfos)
-            {
-                if (targetInfo.displayId == id)
-                {
-                    const auto position = pathInfo.SourceModeInfos[0].position;
-                    return std::make_tuple(position.x, position.y);
-                }
-            }
+            return std::nullopt;
         }
 
-        return std::nullopt;
+        const auto [x, y] = iter->SourceModeInfos[0].position;
+        return std::make_tuple(x, y);
     }
 
     bool DisplayProvider::IsDisplayEnabled(NvU32 id) const
@@ -367,6 +362,17 @@ namespace DisplayManager::NvApi
         }
 
         m_Configuration.GetPathInfos() = GetDisplayConfiguration();
+    }
+
+    bool DisplayProvider::IsDisplayPrimary(NvU32 id) const
+    {
+        const auto iter = FindPathByDisplayId(id);
+        if (iter == m_Configuration.GetPathInfos().end())
+        {
+            return false;
+        }
+
+        return iter->SourceModeInfos[0].bGDIPrimary;
     }
 
     // https://github.com/NVIDIA/nvapi/blob/main/Sample_Code/DisplayConfiguration/DisplayConfiguration.cpp

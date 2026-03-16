@@ -12,11 +12,11 @@ namespace DisplayManager::NvApi
     public:
         Display(DisplayProvider* provider, NvPhysicalGpuHandle gpu, NvU32 displayId);
 
-        std::string GetName() const override;
-        bool IsPrimary() const override;
-        bool IsEnabled() const override;
+        [[nodiscard]] std::string GetName() const override;
+        [[nodiscard]] bool IsPrimary() const override;
+        [[nodiscard]] bool IsEnabled() const override;
         void SetEnabled(bool enabled) override;
-        std::optional<std::tuple<int, int>> GetCoordinates() const override;
+        [[nodiscard]] std::optional<std::tuple<int, int>> GetCoordinates() const override;
         void SetCoordinates(int x, int y) override;
 
     private:

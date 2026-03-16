@@ -29,7 +29,7 @@ namespace DisplayManager::NvApi
 
     bool Display::IsPrimary() const
     {
-        return false;
+        return m_DisplayProvider->IsDisplayPrimary(m_DisplayId);
     }
 
     bool Display::IsEnabled() const
@@ -49,5 +49,6 @@ namespace DisplayManager::NvApi
 
     void Display::SetCoordinates(int x, int y)
     {
+        throw std::runtime_error("Display::SetCoordinates() is not implemented");
     }
 }

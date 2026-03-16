@@ -6,11 +6,9 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 #include "DisplayManager/Factory.h"
 #include "DisplayManager/IConfiguration.h"
 #include "DisplayManager/IDisplayProvider.h"
-
 #include "DisplayManager/Serialization/BoostInputArchive.h"
 #include "DisplayManager/Serialization/BoostOutputArchive.h"
 
@@ -58,9 +56,10 @@ bool CommandEnumerate(
                 ", " + std::to_string(std::get<1>(*coordinates)) + ")";
         }
 
-        spdlog::info("Display: {}, Enabled: {}, Coordinates: {}",
+        spdlog::info("Display: {}, Enabled: {}, Primary: {}, Coordinates: {}",
                      display->GetName(),
                      display->IsEnabled(),
+                     display->IsPrimary(),
                      coordinatesStr);
     }
 
