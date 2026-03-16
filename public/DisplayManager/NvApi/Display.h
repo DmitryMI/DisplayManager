@@ -17,7 +17,7 @@ namespace DisplayManager::NvApi
         [[nodiscard]] bool IsEnabled() const override;
         void SetEnabled(bool enabled) override;
         [[nodiscard]] std::optional<std::tuple<int, int>> GetCoordinates() const override;
-        void SetCoordinates(int x, int y) override;
+        bool SetCoordinates(int x, int y) override;
 
     private:
         DisplayProvider* m_DisplayProvider;

@@ -15,6 +15,6 @@ namespace DisplayManager
 		[[nodiscard]] virtual bool IsEnabled() const = 0;
 		virtual void SetEnabled(bool enabled) = 0;
 		[[nodiscard]] virtual std::optional<std::tuple<int, int>> GetCoordinates() const = 0;
-		virtual void SetCoordinates(int x, int y) = 0;
+		virtual bool SetCoordinates(int x, int y) = 0;
 	};
 }

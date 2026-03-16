@@ -297,6 +297,21 @@ namespace DisplayManager::NvApi
         return std::make_tuple(x, y);
     }
 
+    bool DisplayProvider::SetDisplayCoordinates(NvU32 id, int x, int y)
+    {
+        const auto [pathIndex, targetIndex] = FindTargetInfoIndexByDisplayId(id);
+        if (pathIndex == -1 || targetIndex == -1)
+        {
+            throw std::runtime_error("Cannot find path for display " + std::to_string(id));
+        }
+
+        m_Configuration.GetPathInfos()[pathIndex].SourceModeInfos[0].position.x = x;
+        m_Configuration.GetPathInfos()[pathIndex].SourceModeInfos[0].position.y = y;
+
+        const auto result = ApplyCurrentConfiguration();
+        return result == NVAPI_OK;
+    }
+
     bool DisplayProvider::IsDisplayEnabled(NvU32 id) const
     {
         for (const auto& displayId : m_DisplayIds)
@@ -353,15 +368,11 @@ namespace DisplayManager::NvApi
             pathInfos.push_back(unmanagedPathInfo);
         }
 
-        // Apply the new topology
-        const auto status = NvAPI_DISP_SetDisplayConfig(static_cast<NvU32>(pathInfos.size()), pathInfos.data(), 0);
-
-        if (status != NVAPI_OK)
+        const auto applyResult = ApplyCurrentConfiguration();
+        if (applyResult != NVAPI_OK)
         {
-            throw std::runtime_error("NvAPI_DISP_SetDisplayConfig failed with code: " + std::to_string(status));
+            throw std::runtime_error("NvAPI_DISP_SetDisplayConfig failed with code: " + std::to_string(applyResult));
         }
-
-        m_Configuration.GetPathInfos() = GetDisplayConfiguration();
     }
 
     bool DisplayProvider::IsDisplayPrimary(NvU32 id) const
@@ -373,6 +384,23 @@ namespace DisplayManager::NvApi
         }
 
         return iter->SourceModeInfos[0].bGDIPrimary;
+    }
+
+    bool DisplayProvider::ApplyCurrentConfiguration()
+    {
+        std::vector<NV_DISPLAYCONFIG_PATH_INFO> pathInfos;
+        pathInfos.reserve(m_Configuration.GetPathInfos().size());
+        for (auto& managedPath : m_Configuration.GetPathInfos())
+        {
+            const NV_DISPLAYCONFIG_PATH_INFO unmanagedPathInfo = managedPath.ToUnmanaged();
+            pathInfos.push_back(unmanagedPathInfo);
+        }
+
+        // Apply the new topology
+        const auto status = NvAPI_DISP_SetDisplayConfig(static_cast<NvU32>(pathInfos.size()), pathInfos.data(), 0);
+
+        m_Configuration.GetPathInfos() = GetDisplayConfiguration();
+        return status == NVAPI_OK;
     }
 
     // https://github.com/NVIDIA/nvapi/blob/main/Sample_Code/DisplayConfiguration/DisplayConfiguration.cpp
@@ -437,18 +465,6 @@ namespace DisplayManager::NvApi
 
         m_Configuration.GetPathInfos() = configNew->GetPathInfos();
 
-        std::vector<NV_DISPLAYCONFIG_PATH_INFO> pathInfos;
-        pathInfos.reserve(m_Configuration.GetPathInfos().size());
-        for (auto& managedPath : m_Configuration.GetPathInfos())
-        {
-            const NV_DISPLAYCONFIG_PATH_INFO unmanagedPathInfo = managedPath.ToUnmanaged();
-            pathInfos.push_back(unmanagedPathInfo);
-        }
-
-        // Apply the new topology
-        const auto status = NvAPI_DISP_SetDisplayConfig(static_cast<NvU32>(pathInfos.size()), pathInfos.data(), 0);
-
-        m_Configuration.GetPathInfos() = GetDisplayConfiguration();
-        return status == NVAPI_OK;
+        return ApplyCurrentConfiguration();
     }
 }

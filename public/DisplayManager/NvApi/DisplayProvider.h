@@ -22,6 +22,7 @@ namespace DisplayManager::NvApi
 
 		static std::string GetDisplayName(NvU32 id);
 		[[nodiscard]] std::optional<std::tuple<int, int>> GetDisplayCoordinates(NvU32 id) const;
+		bool SetDisplayCoordinates(NvU32 id, int x, int y);
 		[[nodiscard]] bool IsDisplayEnabled(NvU32 id) const;
 		void SetDisplayEnabled(NvU32 id, bool enabledSet);
 		[[nodiscard]] bool IsDisplayPrimary(NvU32 id) const;
@@ -48,6 +49,23 @@ namespace DisplayManager::NvApi
 			);
 		}
 
+		[[nodiscard]] std::tuple<int, int> FindTargetInfoIndexByDisplayId(NvU32 id) const
+		{
+			for (size_t pathInfoIndex = 0; pathInfoIndex < m_Configuration.GetPathInfos().size(); ++pathInfoIndex)
+			{
+				for (size_t targetInfoIndex = 0; targetInfoIndex < m_Configuration.GetPathInfos()[pathInfoIndex].TargetInfos.size(); targetInfoIndex++)
+				{
+					if (m_Configuration.GetPathInfos()[pathInfoIndex].TargetInfos[targetInfoIndex].displayId == id)
+					{
+						return std::make_tuple(static_cast<int>(pathInfoIndex), static_cast<int>(targetInfoIndex));
+					}
+				}
+			}
+
+			return std::make_tuple(-1, -1);
+		}
+
+		bool ApplyCurrentConfiguration();
 		void RefreshInternal();
 
 	public:

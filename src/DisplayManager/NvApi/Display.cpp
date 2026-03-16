@@ -47,8 +47,8 @@ namespace DisplayManager::NvApi
         return m_DisplayProvider->GetDisplayCoordinates(m_DisplayId);
     }
 
-    void Display::SetCoordinates(int x, int y)
+    bool Display::SetCoordinates(int x, int y)
     {
-        throw std::runtime_error("Display::SetCoordinates() is not implemented");
+        return m_DisplayProvider->SetDisplayCoordinates(m_DisplayId, x, y);
     }
 }

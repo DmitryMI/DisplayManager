@@ -185,6 +185,33 @@ bool CommandLoad(
     return true;
 }
 
+bool CommandSetPosition(DisplayManager::IDisplayProvider& provider,
+    std::vector<std::shared_ptr<DisplayManager::IDisplay>>& displays,
+    const CommandArgs& args)
+{
+    bool somethingDone = false;
+
+    const auto& displayName = args[0];
+    const auto x = std::stoi(args[1]);
+    const auto y = std::stoi(args[2]);
+
+    auto displayIter = std::find_if(displays.begin(), displays.end(), [&](const auto& display){return display->GetName() == displayName;});
+    if (displayIter == displays.end())
+    {
+        spdlog::error("Display with name {} was not found", displayName);
+        return false;
+    }
+
+    spdlog::info("Setting position of {} to ({}, {})", displayName, x, y);
+    bool ok = (*displayIter)->SetCoordinates(x, y);
+    if (!ok)
+    {
+        spdlog::error("Failed to set coordinates");
+    }
+
+    return ok;
+}
+
 int main(int argc, char** argv)
 {
     auto displayProvider = std::unique_ptr<DisplayManager::IDisplayProvider>(
@@ -229,6 +256,7 @@ int main(int argc, char** argv)
         {"enumerate", CommandEnumerate},
         {"enable", CommandEnable},
         {"disable", CommandDisable},
+        {"set-position", CommandSetPosition},
         {"save", CommandSave},
         {"load", CommandLoad},
     };
