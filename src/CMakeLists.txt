@@ -16,5 +16,5 @@ set_property(TARGET DisplayManager PROPERTY CXX_STANDARD 23)
 target_include_directories(DisplayManager PUBLIC "../public")
 target_link_libraries(DisplayManager PUBLIC nvapi)
 
-find_package(Boost REQUIRED COMPONENTS serialization)
-target_link_libraries(DisplayManager PUBLIC Boost::serialization)
+find_package(Boost REQUIRED COMPONENTS serialization algorithm)
+target_link_libraries(DisplayManager PUBLIC Boost::serialization Boost::algorithm)

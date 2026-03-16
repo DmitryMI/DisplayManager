@@ -1,6 +1,5 @@
 ﻿#include <boost/program_options.hpp>
 #include <spdlog/spdlog.h>
-
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -111,7 +110,8 @@ bool CommandDisable(
 
         for (auto& display : displays)
         {
-            if (display->GetName() == displayName)
+            const auto name = display->GetName();
+            if (name == displayName)
             {
                 display->SetEnabled(false);
                 spdlog::info("Display {}, Set Enabled: false", display->GetName());
@@ -122,7 +122,9 @@ bool CommandDisable(
         }
 
         if (!displayFound)
+        {
             spdlog::error("Display with name {} was not found", displayName);
+        }
     }
 
     return somethingDone;

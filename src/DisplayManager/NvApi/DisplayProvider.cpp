@@ -1,5 +1,4 @@
 #include "DisplayManager/NvApi/DisplayProvider.h"
-
 #include <algorithm>
 #include <stdexcept>
 #include <array>
@@ -7,9 +6,8 @@
 #include <string>
 #include <memory>
 #include <ranges>
-
 #include "DisplayManager/NvApi/Display.h"
-
+#include <boost/algorithm/string.hpp>
 
 namespace
 {
@@ -202,7 +200,7 @@ namespace
 		result += c2;
 		result += c3;
 
-		return result; // Returns strings like "SAM", "DEL", "VSC", etc.
+		return boost::trim_copy(result); // Returns strings like "SAM", "DEL", "VSC", etc.
 	}
 
 	std::string GetModelNameFromEdid(const NV_EDID& edid)
@@ -222,7 +220,7 @@ namespace
 					if (c == 0x0A) break; // Stop at newline
 					modelName += c;
 				}
-				return modelName;
+				return boost::trim_copy(modelName);
 				}
 		}
 

@@ -3,6 +3,7 @@
     "gtest",
     "spdlog",
     "boost-program-options",
-    "boost-serialization"
+    "boost-serialization",
+    "boost-algorithm"
   ]
 }
