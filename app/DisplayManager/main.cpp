@@ -71,7 +71,8 @@ int main(int argc, char** argv)
 		somethingDone = true;
 	}
 
-	if (vm.count("disable")) {
+	if (vm.count("disable"))
+		{
 		std::cout << "Disable: ";
 		for (const auto& display : vm["disable"].as<std::vector<std::string>>())
 		{

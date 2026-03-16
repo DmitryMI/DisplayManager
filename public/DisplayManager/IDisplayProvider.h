@@ -10,6 +10,7 @@ namespace DisplayManager
 	{
 	public:
 		virtual ~IDisplayProvider() = default;
-		virtual std::vector<std::shared_ptr<IDisplay>> GetDisplays() const = 0;
+		virtual void Refresh() = 0;
+		virtual std::vector<std::shared_ptr<IDisplay>> GetDisplays() = 0;
 	};
 }

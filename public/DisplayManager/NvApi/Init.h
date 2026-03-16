@@ -1,5 +1,9 @@
 #pragma once
 
+#include <windows.h>
+#include "DisplayManager/NvApi/targetver.h"
+#include "nvapi.h"
+
 namespace DisplayManager::NvApi
 {
 	class Init
@@ -7,7 +11,8 @@ namespace DisplayManager::NvApi
 	public:
 		~Init();
 		static const Init& GetInstance() { return Instance; }
-		bool IsInitialized() const { return true; }
+		// ReSharper disable once CppMemberFunctionMayBeStatic
+		[[nodiscard]] bool IsInitialized() const { return true; }
 
 	private:
 		static Init Instance;

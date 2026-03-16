@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string_view>
+#include <string>
 #include <utility>
 
 namespace DisplayManager
@@ -9,7 +9,7 @@ namespace DisplayManager
 	{
 	public:
 		virtual ~IDisplay() = default;
-		virtual std::string_view GetName() const = 0;
+		virtual std::string GetName() const = 0;
 		virtual bool IsEnabled() const = 0;
 		virtual void SetEnabled(bool enabled) = 0;
 		virtual std::tuple<int, int> GetCoordinates() const = 0;
