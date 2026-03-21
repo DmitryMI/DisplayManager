@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    "gtest",
+    "spdlog",
+    "boost-program-options",
+    "boost-serialization",
+    "boost-algorithm"
+  ]
+}
