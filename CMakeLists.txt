@@ -14,4 +14,5 @@ project ("DisplayManager")
 add_subdirectory("dependencies/nvapi")
 add_subdirectory("src")
 add_subdirectory("app/DisplayManager")
+add_subdirectory("test")
 

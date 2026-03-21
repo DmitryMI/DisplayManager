@@ -1,8 +1,6 @@
-//
-// Created by DmitriyPC on 16.03.2026.
-//
-
 #include "DisplayManager/Serialization/BoostOutputArchive.h"
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 
 namespace DisplayManager::Serialization
 {
@@ -30,4 +28,15 @@ namespace DisplayManager::Serialization
         return *this;
     }
 
+    IOutputArchive& BoostOutputArchive::operator<<(const std::string& value)
+    {
+        m_OutArchive << std::string(value);
+        return *this;
+    }
+
+    IOutputArchive& BoostOutputArchive::operator<<(const std::vector<uint8_t>& value)
+    {
+        m_OutArchive << value;
+        return *this;
+    }
 }

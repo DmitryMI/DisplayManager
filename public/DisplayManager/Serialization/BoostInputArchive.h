@@ -1,7 +1,3 @@
-//
-// Created by DmitriyPC on 16.03.2026.
-//
-
 #pragma once
 #include "DisplayManager/Serialization/IInputArchive.h"
 #include <boost/archive/text_iarchive.hpp>
@@ -19,6 +15,8 @@ namespace DisplayManager::Serialization
         IInputArchive& operator>>(std::int64_t& value) override;
         IInputArchive& operator>>(size_t& value) override;
         IInputArchive& operator>>(double& value) override;
+        IInputArchive& operator>>(std::string& value) override;
+        IInputArchive& operator>>(std::vector<uint8_t>& value) override;
 
     private:
         std::ifstream m_Stream;

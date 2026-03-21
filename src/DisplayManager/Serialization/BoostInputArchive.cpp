@@ -1,5 +1,6 @@
-
 #include "DisplayManager/Serialization/BoostInputArchive.h"
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 
 namespace DisplayManager::Serialization
 {
@@ -28,4 +29,15 @@ namespace DisplayManager::Serialization
         return *this;
     }
 
+    IInputArchive& BoostInputArchive::operator>>(std::string& value)
+    {
+        m_InArchive >> value;
+        return *this;
+    }
+
+    IInputArchive& BoostInputArchive::operator>>(std::vector<uint8_t>& value)
+    {
+        m_InArchive >> value;
+        return *this;
+    }
 }

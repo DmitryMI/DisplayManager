@@ -1,7 +1,3 @@
-//
-// Created by DmitriyPC on 16.03.2026.
-//
-
 #pragma once
 #include <fstream>
 #include <filesystem>
@@ -19,6 +15,8 @@ namespace DisplayManager::Serialization
         IOutputArchive& operator<<(std::int64_t value) override;
         IOutputArchive& operator<<(size_t value) override;
         IOutputArchive& operator<<(double value) override;
+        IOutputArchive& operator<<(const std::string& value) override;
+        IOutputArchive& operator<<(const std::vector<uint8_t>& value) override;
 
     private:
         std::ofstream m_Stream;

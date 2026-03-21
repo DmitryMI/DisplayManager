@@ -16,7 +16,18 @@ namespace DisplayManager::NvApi
         const std::vector<DisplayConfigPathInfo>& GetPathInfos() const;
         std::vector<DisplayConfigPathInfo>& GetPathInfos();
 
+        bool operator==(const Configuration& rhs) const;
+        bool operator!=(const Configuration& rhs) const;
+
     private:
         std::vector<DisplayConfigPathInfo> m_DisplayConfigs;
+
+        static void Serialize(Serialization::IOutputArchive& archive, const NV_DISPLAYCONFIG_PATH_ADVANCED_TARGET_INFO& targetInfoDetails);
+        static void Serialize(Serialization::IOutputArchive& archive, const NV_TIMING& timingOverride);
+        static void Serialize(Serialization::IOutputArchive& archive, const NV_TIMINGEXT& etc);
+
+        static void Deserialize(Serialization::IInputArchive& archive, NV_DISPLAYCONFIG_PATH_ADVANCED_TARGET_INFO& targetInfoDetails);
+        static void Deserialize(Serialization::IInputArchive& archive, NV_TIMING& timingOverride);
+        static void Deserialize(Serialization::IInputArchive& archive, NV_TIMINGEXT& etc);
     };
 }
